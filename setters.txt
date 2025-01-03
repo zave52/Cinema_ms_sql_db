@@ -1,0 +1,851 @@
+EXEC sp_SetEmployee
+     @FirstName = N'Іван',
+     @LastName = N'Шевченко',
+     @RoleID = 1,
+     @HireDate = '2024-11-01',
+     @Salary = 50000.00;
+EXEC sp_SetEmployee
+     @EmployeeID = 1,
+     @FirstName = N'Олена',
+     @LastName = N'Коваль',
+     @RoleID = 2,
+     @HireDate = '2024-11-15',
+     @Salary = 60000.00;
+EXEC sp_SetEmployee
+     @EmployeeID = 2,
+     @LastName = N'Іваненко';
+EXEC sp_SetEmployee
+     @EmployeeID = 3,
+     @Salary = 70000.00;
+
+
+CREATE PROCEDURE sp_SetEmployee @EmployeeID INT = NULL OUTPUT,
+                                @FirstName NVARCHAR(100) = NULL,
+                                @LastName NVARCHAR(100) = NULL,
+                                @RoleID INT = NULL,
+                                @HireDate DATE = NULL,
+                                @Salary DECIMAL(10, 2) = NULL
+AS
+BEGIN
+    DECLARE @user NVARCHAR(50) = USER_NAME();
+    DECLARE @currentDate DATETIME = GETDATE();
+
+    IF @EmployeeID IS NULL AND @FirstName IS NULL AND @LastName IS NULL AND @RoleID IS NULL AND @HireDate IS NULL AND
+       @Salary IS NULL
+        BEGIN
+            PRINT N'Необхідно вказати хоча б одне значення, коли @EmployeeID також NULL.';
+            RETURN;
+        END;
+
+    BEGIN TRY
+        IF @EmployeeID IS NULL
+            BEGIN
+                IF EXISTS (SELECT 1 FROM dbo.EmployeeRoles WHERE RoleID = @RoleID)
+                    BEGIN
+                        PRINT N'Роль з таким @RoleID не існує';
+                        RETURN;
+                    END;
+
+                INSERT INTO dbo.Employees (FirstName, LastName, RoleID, HireDate, Salary, CreatedBy, CreatedDate,
+                                           ModifiedBy, ModifiedDate)
+                VALUES (@FirstName, @LastName, @RoleID, @HireDate, @Salary, @user, @currentDate, @user, @currentDate);
+
+                PRINT N'Новий запис успішно вставлений';
+            END
+        ELSE
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.Employees WHERE EmployeeID = @EmployeeID)
+                    BEGIN
+                        PRINT N'Запису з таким @EmployeeID не існує';
+                        RETURN;
+                    END;
+                IF @FirstName IS NULL AND @LastName IS NULL AND @RoleID IS NULL AND @HireDate IS NULL AND
+                   @Salary IS NULL
+                    BEGIN
+                        PRINT N'Не вказано жодного поля для заміни';
+                        RETURN;
+                    END;
+
+                IF @RoleID IS NOT NULL AND NOT EXISTS (SELECT 1 FROM dbo.EmployeeRoles WHERE RoleID = @RoleID)
+                    BEGIN
+                        PRINT N'Роль з таким @RoleID не існує';
+                        RETURN;
+                    END;
+
+                UPDATE dbo.Employees
+                SET FirstName    = ISNULL(@FirstName, FirstName),
+                    LastName     = ISNULL(@LastName, LastName),
+                    RoleID       = ISNULL(@RoleID, RoleID),
+                    HireDate     = ISNULL(@HireDate, HireDate),
+                    Salary       = ISNULL(@Salary, Salary),
+                    ModifiedBy   = @user,
+                    ModifiedDate = @currentDate
+                WHERE EmployeeID = @EmployeeID;
+
+                PRINT N'Запис успішно змінено';
+            END;
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+
+CREATE PROCEDURE sp_SetCustomer @CustomerID INT = NULL OUTPUT,
+                                @FirstName NVARCHAR(100) = NULL,
+                                @LastName NVARCHAR(100) = NULL,
+                                @Email NVARCHAR(255) = NULL,
+                                @Phone NVARCHAR(14) = NULL
+AS
+BEGIN
+    DECLARE @user NVARCHAR(50) = USER_NAME();
+    DECLARE @currentDate DATETIME = GETDATE();
+
+    IF @CustomerID IS NULL AND @FirstName IS NULL AND @LastName IS NULL AND @Email IS NULL AND @Phone IS NULL
+        BEGIN
+            PRINT N'Необхідно вказати хоча б одне значення, коли @CustomerID також NULL.';
+            RETURN;
+        END;
+
+    BEGIN TRY
+        IF @CustomerID IS NULL
+            BEGIN
+                INSERT INTO dbo.Customers (FirstName, LastName, Email, Phone, CreatedBy, CreatedDate, ModifiedBy, ModifiedDate)
+                VALUES (@FirstName, @LastName, @Email, @Phone, @user, @currentDate, @user, @currentDate);
+
+                PRINT N'Новий запис успішно вставлений';
+            END
+        ELSE
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.Customers WHERE CustomerID = @CustomerID)
+                    BEGIN
+                        PRINT N'Запису з таким @CustomerID не існує';
+                        RETURN;
+                    END;
+
+                UPDATE dbo.Customers
+                SET FirstName    = ISNULL(@FirstName, FirstName),
+                    LastName     = ISNULL(@LastName, LastName),
+                    Email        = ISNULL(@Email, Email),
+                    Phone        = ISNULL(@Phone, Phone),
+                    ModifiedBy   = @user,
+                    ModifiedDate = @currentDate
+                WHERE CustomerID = @CustomerID;
+
+                PRINT N'Запис успішно змінено';
+            END;
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+
+CREATE PROCEDURE sp_SetCustomerFeedback @FeedbackID INT = NULL OUTPUT,
+                                        @CustomerID INT = NULL,
+                                        @FeedbackText NVARCHAR(MAX) = NULL,
+                                        @Rating INT = NULL,
+                                        @FeedbackDate DATETIME = NULL
+AS
+BEGIN
+    DECLARE @user NVARCHAR(50) = USER_NAME();
+    DECLARE @currentDate DATETIME = GETDATE();
+
+    IF @FeedbackID IS NULL AND @CustomerID IS NULL AND @FeedbackText IS NULL AND @Rating IS NULL AND @FeedbackDate IS NULL
+        BEGIN
+            PRINT N'Необхідно вказати хоча б одне значення, коли @FeedbackID також NULL.';
+            RETURN;
+        END;
+
+    BEGIN TRY
+        IF @FeedbackID IS NULL
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.Customers WHERE CustomerID = @CustomerID)
+                    BEGIN
+                        PRINT N'Клієнта з таким @CustomerID не існує';
+                        RETURN;
+                    END;
+
+                INSERT INTO dbo.CustomerFeedback (CustomerID, FeedbackText, Rating, FeedbackDate, CreatedBy, CreatedDate, ModifiedBy, ModifiedDate)
+                VALUES (@CustomerID, @FeedbackText, @Rating, @FeedbackDate, @user, @currentDate, @user, @currentDate);
+
+                PRINT N'Новий запис успішно вставлений';
+            END
+        ELSE
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.CustomerFeedback WHERE FeedbackID = @FeedbackID)
+                    BEGIN
+                        PRINT N'Запису з таким @FeedbackID не існує';
+                        RETURN;
+                    END;
+
+                UPDATE dbo.CustomerFeedback
+                SET CustomerID   = ISNULL(@CustomerID, CustomerID),
+                    FeedbackText = ISNULL(@FeedbackText, FeedbackText),
+                    Rating       = ISNULL(@Rating, Rating),
+                    FeedbackDate = ISNULL(@FeedbackDate, FeedbackDate),
+                    ModifiedBy   = @user,
+                    ModifiedDate = @currentDate
+                WHERE FeedbackID = @FeedbackID;
+
+                PRINT N'Запис успішно змінено';
+            END;
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+
+CREATE PROCEDURE sp_SetDirector @DirectorID INT = NULL OUTPUT,
+                                @FirstName NVARCHAR(100) = NULL,
+                                @LastName NVARCHAR(100) = NULL,
+                                @DateOfBirth DATE = NULL
+AS
+BEGIN
+    DECLARE @user NVARCHAR(50) = USER_NAME();
+    DECLARE @currentDate DATETIME = GETDATE();
+
+    IF @DirectorID IS NULL AND @FirstName IS NULL AND @LastName IS NULL AND @DateOfBirth IS NULL
+        BEGIN
+            PRINT N'Необхідно вказати хоча б одне значення, коли @DirectorID також NULL.';
+            RETURN;
+        END;
+
+    BEGIN TRY
+        IF @DirectorID IS NULL
+            BEGIN
+                INSERT INTO dbo.Directors (FirstName, LastName, DateOfBirth, CreatedBy, CreatedDate, ModifiedBy, ModifiedDate)
+                VALUES (@FirstName, @LastName, @DateOfBirth, @user, @currentDate, @user, @currentDate);
+
+                PRINT N'Новий запис успішно вставлений';
+            END
+        ELSE
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.Directors WHERE DirectorID = @DirectorID)
+                    BEGIN
+                        PRINT N'Запису з таким @DirectorID не існує';
+                        RETURN;
+                    END;
+
+                UPDATE dbo.Directors
+                SET FirstName    = ISNULL(@FirstName, FirstName),
+                    LastName     = ISNULL(@LastName, LastName),
+                    DateOfBirth  = ISNULL(@DateOfBirth, DateOfBirth),
+                    ModifiedBy   = @user,
+                    ModifiedDate = @currentDate
+                WHERE DirectorID = @DirectorID;
+
+                PRINT N'Запис успішно змінено';
+            END;
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+
+CREATE PROCEDURE sp_SetGenre @GenreID INT = NULL OUTPUT,
+                             @GenreName NVARCHAR(100) = NULL
+AS
+BEGIN
+    DECLARE @user NVARCHAR(50) = USER_NAME();
+    DECLARE @currentDate DATETIME = GETDATE();
+
+    IF @GenreID IS NULL AND @GenreName IS NULL
+        BEGIN
+            PRINT N'Необхідно вказати хоча б одне значення, коли @GenreID також NULL.';
+            RETURN;
+        END;
+
+    BEGIN TRY
+        IF @GenreID IS NULL
+            BEGIN
+                INSERT INTO dbo.Genres (GenreName, CreatedBy, CreatedDate, ModifiedBy, ModifiedDate)
+                VALUES (@GenreName, @user, @currentDate, @user, @currentDate);
+
+                PRINT N'Новий запис успішно вставлений';
+            END
+        ELSE
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.Genres WHERE GenreID = @GenreID)
+                    BEGIN
+                        PRINT N'Запису з таким @GenreID не існує';
+                        RETURN;
+                    END;
+
+                UPDATE dbo.Genres
+                SET GenreName    = ISNULL(@GenreName, GenreName),
+                    ModifiedBy   = @user,
+                    ModifiedDate = @currentDate
+                WHERE GenreID = @GenreID;
+
+                PRINT N'Запис успішно змінено';
+            END;
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+
+CREATE PROCEDURE sp_SetHall @HallID INT = NULL OUTPUT,
+                            @Name NVARCHAR(50) = NULL,
+                            @Capacity INT = NULL
+AS
+BEGIN
+    DECLARE @user NVARCHAR(50) = USER_NAME();
+    DECLARE @currentDate DATETIME = GETDATE();
+
+    IF @HallID IS NULL AND @Name IS NULL AND @Capacity IS NULL
+        BEGIN
+            PRINT N'Необхідно вказати хоча б одне значення, коли @HallID також NULL.';
+            RETURN;
+        END;
+
+    BEGIN TRY
+        IF @HallID IS NULL
+            BEGIN
+                INSERT INTO dbo.Halls (Name, Capacity, CreatedBy, CreatedDate, ModifiedBy, ModifiedDate)
+                VALUES (@Name, @Capacity, @user, @currentDate, @user, @currentDate);
+
+                PRINT N'Новий запис успішно вставлений';
+            END
+        ELSE
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.Halls WHERE HallID = @HallID)
+                    BEGIN
+                        PRINT N'Запису з таким @HallID не існує';
+                        RETURN;
+                    END;
+
+                UPDATE dbo.Halls
+                SET Name         = ISNULL(@Name, Name),
+                    Capacity     = ISNULL(@Capacity, Capacity),
+                    ModifiedBy   = @user,
+                    ModifiedDate = @currentDate
+                WHERE HallID = @HallID;
+
+                PRINT N'Запис успішно змінено';
+            END;
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+
+
+CREATE PROCEDURE sp_SetMovie @MovieID INT = NULL OUTPUT,
+                             @Title NVARCHAR(255) = NULL,
+                             @ReleaseDate DATE = NULL,
+                             @Duration INT = NULL,
+                             @GenreID INT = NULL,
+                             @DirectorID INT = NULL,
+                             @Description NVARCHAR(MAX) = NULL
+AS
+BEGIN
+    IF @MovieID IS NULL AND @Title IS NULL AND @ReleaseDate IS NULL AND @Duration IS NULL AND
+       @GenreID IS NULL AND @DirectorID IS NULL AND @Description IS NULL
+        BEGIN
+            PRINT N'Необхідно вказати хоча б одне значення, коли @MovieID також NULL.';
+            RETURN;
+        END;
+
+    BEGIN TRY
+        IF @MovieID IS NULL
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.Genres WHERE GenreID = @GenreID)
+                    BEGIN
+                        PRINT N'Жанру з таким @GenreID не існує';
+                        RETURN;
+                    END;
+                IF NOT EXISTS (SELECT 1 FROM dbo.Directors WHERE DirectorID = @DirectorID)
+                    BEGIN
+                        PRINT N'Режисера з таким @DirectorID не існує';
+                        RETURN;
+                    END;
+
+                INSERT INTO dbo.Movies (Title, ReleaseDate, Duration, GenreID, DirectorID, Description)
+                VALUES (@Title, @ReleaseDate, @Duration, @GenreID, @DirectorID, @Description);
+
+                PRINT N'Новий запис успішно вставлений';
+            END
+        ELSE
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.Movies WHERE MovieID = @MovieID)
+                    BEGIN
+                        PRINT N'Запису з таким @MovieID не існує';
+                        RETURN;
+                    END;
+
+                UPDATE dbo.Movies
+                SET Title        = ISNULL(@Title, Title),
+                    ReleaseDate  = ISNULL(@ReleaseDate, ReleaseDate),
+                    Duration     = ISNULL(@Duration, Duration),
+                    GenreID      = ISNULL(@GenreID, GenreID),
+                    DirectorID   = ISNULL(@DirectorID, DirectorID),
+                    Description  = ISNULL(@Description, Description)
+                WHERE MovieID = @MovieID;
+
+                PRINT N'Запис успішно змінено';
+            END;
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+
+CREATE PROCEDURE sp_SetSession @SessionID INT = NULL OUTPUT,
+                               @MovieID INT = NULL,
+                               @HallID INT = NULL,
+                               @SessionTime DATETIME = NULL
+AS
+BEGIN
+    DECLARE @user NVARCHAR(50) = USER_NAME();
+    DECLARE @currentDate DATETIME = GETDATE();
+
+    IF @SessionID IS NULL AND @MovieID IS NULL AND @HallID IS NULL AND @SessionTime IS NULL
+        BEGIN
+            PRINT N'Необхідно вказати хоча б одне значення, коли @SessionID також NULL.';
+            RETURN;
+        END;
+
+    BEGIN TRY
+        IF @SessionID IS NULL
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.Movies WHERE MovieID = @MovieID)
+                    BEGIN
+                        PRINT N'Фільму з таким @MovieID не існує';
+                        RETURN;
+                    END;
+                IF NOT EXISTS (SELECT 1 FROM dbo.Halls WHERE HallID = @HallID)
+                    BEGIN
+                        PRINT N'Зали з таким @HallID не існує';
+                        RETURN;
+                    END;
+
+                INSERT INTO dbo.Sessions (MovieID, HallID, SessionTime, CreatedBy, CreatedDate, ModifiedBy, ModifiedDate)
+                VALUES (@MovieID, @HallID, @SessionTime, @user, @currentDate, @user, @currentDate);
+
+                PRINT N'Новий запис успішно вставлений';
+            END
+        ELSE
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.Sessions WHERE SessionID = @SessionID)
+                    BEGIN
+                        PRINT N'Запису з таким @SessionID не існує';
+                        RETURN;
+                    END;
+
+                UPDATE dbo.Sessions
+                SET MovieID      = ISNULL(@MovieID, MovieID),
+                    HallID       = ISNULL(@HallID, HallID),
+                    SessionTime  = ISNULL(@SessionTime, SessionTime),
+                    ModifiedBy   = @user,
+                    ModifiedDate = @currentDate
+                WHERE SessionID = @SessionID;
+
+                PRINT N'Запис успішно змінено';
+            END;
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+
+CREATE PROCEDURE sp_SetSeat @SeatID INT = NULL OUTPUT,
+                            @HallID INT = NULL,
+                            @RowNumber INT = NULL,
+                            @SeatNumber INT = NULL
+AS
+BEGIN
+    DECLARE @user NVARCHAR(50) = USER_NAME();
+    DECLARE @currentDate DATETIME = GETDATE();
+
+    IF @SeatID IS NULL AND @HallID IS NULL AND @RowNumber IS NULL AND @SeatNumber IS NULL
+        BEGIN
+            PRINT N'Необхідно вказати хоча б одне значення, коли @SeatID також NULL.';
+            RETURN;
+        END;
+
+    BEGIN TRY
+        IF @SeatID IS NULL
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.Halls WHERE HallID = @HallID)
+                    BEGIN
+                        PRINT N'Зали з таким @HallID не існує';
+                        RETURN;
+                    END;
+
+                    INSERT INTO dbo.Seats (HallID, RowNumber, SeatNumber, CreatedBy, CreatedDate, ModifiedBy, ModifiedDate)
+                    VALUES (@HallID, @RowNumber, @SeatNumber, @user, @currentDate, @user, @currentDate);
+
+                PRINT N'Новий запис успішно вставлений';
+            END
+        ELSE
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.Seats WHERE SeatID = @SeatID)
+                    BEGIN
+                        PRINT N'Запису з таким @SeatID не існує';
+                        RETURN;
+                    END;
+
+                UPDATE dbo.Seats
+                SET HallID       = ISNULL(@HallID, HallID),
+                    RowNumber    = ISNULL(@RowNumber, RowNumber),
+                    SeatNumber   = ISNULL(@SeatNumber, SeatNumber),
+                    ModifiedBy   = @user,
+                    ModifiedDate = @currentDate
+                WHERE SeatID = @SeatID;
+
+                PRINT N'Запис успішно змінено';
+            END;
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+
+CREATE PROCEDURE sp_SetStoreProduct @ProductID INT = NULL OUTPUT,
+                                    @ProductName NVARCHAR(100) = NULL,
+                                    @CategoryID INT = NULL,
+                                    @Price DECIMAL(5, 2) = NULL,
+                                    @QuantityAvailable INT = NULL
+AS
+BEGIN
+    DECLARE @user NVARCHAR(50) = USER_NAME();
+    DECLARE @currentDate DATETIME = GETDATE();
+
+    IF @ProductID IS NULL AND @ProductName IS NULL AND @CategoryID IS NULL AND @Price IS NULL AND @QuantityAvailable IS NULL
+        BEGIN
+            PRINT N'Необхідно вказати хоча б одне значення, коли @ProductID також NULL.';
+            RETURN;
+        END;
+
+    BEGIN TRY
+        IF @ProductID IS NULL
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.ProductCategories WHERE CategoryID = @CategoryID)
+                    BEGIN
+                        PRINT N'Категорії з таким @CategoryID не існує';
+                        RETURN;
+                    END;
+
+                INSERT INTO dbo.StoreProducts (ProductName, CategoryID, Price, QuantityAvailable, CreatedBy, CreatedDate, ModifiedBy, ModifiedDate)
+                VALUES (@ProductName, @CategoryID, @Price, @QuantityAvailable, @user, @currentDate, @user, @currentDate);
+
+                PRINT N'Новий запис успішно вставлений';
+            END
+        ELSE
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.StoreProducts WHERE ProductID = @ProductID)
+                    BEGIN
+                        PRINT N'Запису з таким @ProductID не існує';
+                        RETURN;
+                    END;
+
+                UPDATE dbo.StoreProducts
+                SET ProductName       = ISNULL(@ProductName, ProductName),
+                    CategoryID        = ISNULL(@CategoryID, CategoryID),
+                    Price             = ISNULL(@Price, Price),
+                    QuantityAvailable = ISNULL(@QuantityAvailable, QuantityAvailable),
+                    ModifiedBy        = @user,
+                    ModifiedDate      = @currentDate
+                WHERE ProductID = @ProductID;
+
+                PRINT N'Запис успішно змінено';
+            END;
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+
+CREATE PROCEDURE sp_SetTicket @TicketID INT = NULL OUTPUT,
+                              @SessionID INT = NULL,
+                              @SeatID INT = NULL,
+                              @Price DECIMAL(5, 2) = NULL,
+                              @PurchaseDate DATETIME = NULL,
+                              @CustomerID INT = NULL,
+                              @EmployeeID INT = NULL
+AS
+BEGIN
+    DECLARE @user NVARCHAR(50) = USER_NAME();
+    DECLARE @currentDate DATETIME = GETDATE();
+
+    IF @TicketID IS NULL AND @SessionID IS NULL AND @SeatID IS NULL AND @Price IS NULL AND
+       @PurchaseDate IS NULL AND @CustomerID IS NULL AND @EmployeeID IS NULL
+        BEGIN
+            PRINT N'Необхідно вказати хоча б одне значення, коли @TicketID також NULL.';
+            RETURN;
+        END;
+
+    BEGIN TRY
+        IF @TicketID IS NULL
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.Sessions WHERE SessionID = @SessionID)
+                    BEGIN
+                        PRINT N'Сесії з таким @SessionID не існує';
+                        RETURN;
+                    END;
+                IF NOT EXISTS (SELECT 1 FROM dbo.Seats WHERE SeatID = @SeatID)
+                    BEGIN
+                        PRINT N'Місця з таким @SeatID не існує';
+                        RETURN;
+                    END;
+                IF NOT EXISTS (SELECT 1 FROM dbo.Customers WHERE CustomerID = @CustomerID)
+                    BEGIN
+                        PRINT N'Клієнта з таким @CustomerID не існує';
+                        RETURN;
+                    END;
+                IF NOT EXISTS (SELECT 1 FROM dbo.Employees WHERE EmployeeID = @EmployeeID)
+                    BEGIN
+                        PRINT N'Працівника з таким @EmployeeID не існує';
+                        RETURN;
+                    END;
+
+                INSERT INTO dbo.Tickets (SessionID, SeatID, Price, PurchaseDate, CustomerID, EmployeeID, CreatedBy, CreatedDate, ModifiedBy, ModifiedDate)
+                VALUES (@SessionID, @SeatID, @Price, @PurchaseDate, @CustomerID, @EmployeeID, @user, @currentDate, @user, @currentDate);
+
+                PRINT N'Новий запис успішно вставлений';
+            END
+        ELSE
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.Tickets WHERE TicketID = @TicketID)
+                    BEGIN
+                        PRINT N'Запису з таким @TicketID не існує';
+                        RETURN;
+                    END;
+
+                UPDATE dbo.Tickets
+                SET SessionID    = ISNULL(@SessionID, SessionID),
+                    SeatID       = ISNULL(@SeatID, SeatID),
+                    Price        = ISNULL(@Price, Price),
+                    PurchaseDate = ISNULL(@PurchaseDate, PurchaseDate),
+                    CustomerID   = ISNULL(@CustomerID, CustomerID),
+                    EmployeeID   = ISNULL(@EmployeeID, EmployeeID),
+                    ModifiedBy   = @user,
+                    ModifiedDate = @currentDate
+                WHERE TicketID = @TicketID;
+
+                PRINT N'Запис успішно змінено';
+            END;
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+
+CREATE PROCEDURE sp_SetPromotion @PromotionID INT = NULL OUTPUT,
+                                 @PromotionName NVARCHAR(100) = NULL,
+                                 @DiscountPercent NUMERIC(5, 2) = NULL
+AS
+BEGIN
+    IF @PromotionID IS NULL AND @PromotionName IS NULL AND @DiscountPercent IS NULL
+        BEGIN
+            PRINT N'Необхідно вказати хоча б одне значення, коли @PromotionID також NULL.';
+            RETURN;
+        END;
+
+    BEGIN TRY
+        IF @PromotionID IS NULL
+            BEGIN
+                INSERT INTO dbo.Promotions (PromotionName, DiscountPercent)
+                VALUES (@PromotionName, @DiscountPercent);
+
+                PRINT N'Новий запис успішно вставлений';
+            END
+        ELSE
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.Promotions WHERE PromotionID = @PromotionID)
+                    BEGIN
+                        PRINT N'Запису з таким @PromotionID не існує';
+                        RETURN;
+                    END;
+
+                UPDATE dbo.Promotions
+                SET PromotionName   = ISNULL(@PromotionName, PromotionName),
+                    DiscountPercent = ISNULL(@DiscountPercent, DiscountPercent)
+                WHERE PromotionID = @PromotionID;
+
+                PRINT N'Запис успішно змінено';
+            END;
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+
+CREATE PROCEDURE sp_SetProductCategory @CategoryID INT = NULL OUTPUT,
+                                       @CategoryName NVARCHAR(100) = NULL
+AS
+BEGIN
+    DECLARE @user NVARCHAR(50) = USER_NAME();
+    DECLARE @currentDate DATETIME = GETDATE();
+
+    IF @CategoryID IS NULL AND @CategoryName IS NULL
+        BEGIN
+            PRINT N'Необхідно вказати хоча б одне значення, коли @CategoryID також NULL.';
+            RETURN;
+        END;
+
+    BEGIN TRY
+        IF @CategoryID IS NULL
+            BEGIN
+                INSERT INTO dbo.ProductCategories (CategoryName, CreatedBy, CreatedDate, ModifiedBy, ModifiedDate)
+                VALUES (@CategoryName, @user, @currentDate, @user, @currentDate);
+
+                PRINT N'Новий запис успішно вставлений';
+            END
+        ELSE
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.ProductCategories WHERE CategoryID = @CategoryID)
+                    BEGIN
+                        PRINT N'Запису з таким @CategoryID не існує';
+                        RETURN;
+                    END;
+
+                UPDATE dbo.ProductCategories
+                SET CategoryName   = ISNULL(@CategoryName, CategoryName),
+                    ModifiedBy     = @user,
+                    ModifiedDate   = @currentDate
+                WHERE CategoryID = @CategoryID;
+
+                PRINT N'Запис успішно змінено';
+            END;
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+
+CREATE PROCEDURE sp_SetCustomerLoyalty @LoyaltyID INT = NULL OUTPUT,
+                                       @CustomerID INT = NULL,
+                                       @PointsEarned INT = NULL,
+                                       @AvailablePromotions INT = NULL,
+                                       @LastUpdated DATETIME = NULL
+AS
+BEGIN
+    DECLARE @user NVARCHAR(50) = USER_NAME();
+    DECLARE @currentDate DATETIME = GETDATE();
+
+    IF @LoyaltyID IS NULL AND @CustomerID IS NULL AND @PointsEarned IS NULL AND
+       @AvailablePromotions IS NULL AND @LastUpdated IS NULL
+        BEGIN
+            PRINT N'Необхідно вказати хоча б одне значення, коли @LoyaltyID також NULL.';
+            RETURN;
+        END;
+
+    BEGIN TRY
+        IF @LoyaltyID IS NULL
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.Customers WHERE CustomerID = @CustomerID)
+                    BEGIN
+                        PRINT N'Клієнта з таким @CustomerID не існує';
+                        RETURN;
+                    END;
+                IF NOT EXISTS (SELECT 1 FROM dbo.Promotions WHERE PromotionID = @AvailablePromotions)
+                    BEGIN
+                        PRINT N'Промоції з таким @AvailablePromotions не існує';
+                        RETURN;
+                    END;
+
+                INSERT INTO dbo.CustomerLoyalty (CustomerID, PointsEarned, AvailablePromotions, LastUpdated, CreatedBy, CreatedDate, ModifiedBy, ModifiedDate)
+                VALUES (@CustomerID, @PointsEarned, @AvailablePromotions, @LastUpdated, @user, @currentDate, @user, @currentDate);
+
+                PRINT N'Новий запис успішно вставлений';
+            END
+        ELSE
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.CustomerLoyalty WHERE LoyaltyID = @LoyaltyID)
+                    BEGIN
+                        PRINT N'Запису з таким @LoyaltyID не існує';
+                        RETURN;
+                    END;
+
+                UPDATE dbo.CustomerLoyalty
+                SET CustomerID          = ISNULL(@CustomerID, CustomerID),
+                    PointsEarned        = ISNULL(@PointsEarned, PointsEarned),
+                    AvailablePromotions = ISNULL(@AvailablePromotions, AvailablePromotions),
+                    LastUpdated         = ISNULL(@LastUpdated, LastUpdated),
+                    ModifiedBy          = @user,
+                    ModifiedDate        = @currentDate
+                WHERE LoyaltyID = @LoyaltyID;
+
+                PRINT N'Запис успішно змінено';
+            END;
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+
+
+CREATE PROCEDURE sp_SetEmployeeRole @RoleID INT = NULL OUTPUT,
+                                    @RoleName NVARCHAR(100) = NULL,
+                                    @Responsibilities NVARCHAR(MAX) = NULL
+AS
+BEGIN
+    DECLARE @user NVARCHAR(50) = USER_NAME();
+    DECLARE @currentDate DATETIME = GETDATE();
+
+    IF @RoleID IS NULL AND @RoleName IS NULL AND @Responsibilities IS NULL
+        BEGIN
+            PRINT N'Необхідно вказати хоча б одне значення, коли @RoleID також NULL.';
+            RETURN;
+        END;
+
+    BEGIN TRY
+        IF @RoleID IS NULL
+            BEGIN
+                INSERT INTO dbo.EmployeeRoles (RoleName, Responsibilities, CreatedBy, CreatedDate, ModifiedBy, ModifiedDate)
+                VALUES (@RoleName, @Responsibilities, @user, @currentDate, @user, @currentDate);
+
+                PRINT N'Новий запис успішно вставлений';
+            END
+        ELSE
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM dbo.EmployeeRoles WHERE RoleID = @RoleID)
+                    BEGIN
+                        PRINT N'Запису з таким @RoleID не існує';
+                        RETURN;
+                    END;
+
+                UPDATE dbo.EmployeeRoles
+                SET RoleName         = ISNULL(@RoleName, RoleName),
+                    Responsibilities = ISNULL(@Responsibilities, Responsibilities),
+                    ModifiedBy       = @user,
+                    ModifiedDate     = @currentDate
+                WHERE RoleID = @RoleID;
+
+                PRINT N'Запис успішно змінено';
+            END;
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO

@@ -1,0 +1,112 @@
+-- Table 1
+CREATE TABLE Halls (
+	HallID INT IDENTITY PRIMARY KEY,
+	Name NVARCHAR(50) NOT NULL,
+	Capacity INT NOT NULL
+);
+-- Table 2
+CREATE TABLE Seats (
+	SeatID INT IDENTITY PRIMARY KEY,
+	HallID INT NOT NULL FOREIGN KEY REFERENCES Halls(HallID),
+	RowNumber INT NOT NULL,
+	SeatNumber INT NOT NULL
+);
+-- Table 3
+CREATE TABLE Customers (
+	CustomerID INT IDENTITY PRIMARY KEY,
+	FirstName NVARCHAR(100) NOT NULL,
+	LastName NVARCHAR(100) NOT NULL,
+	Email NVARCHAR(255),
+	Phone NVARCHAR(14)
+);
+-- Table 4
+CREATE TABLE Genres (
+	GenreID INT IDENTITY PRIMARY KEY,
+	GenreName NVARCHAR(100) NOT NULL
+);
+-- Table 5
+CREATE TABLE Directors (
+	DirectorID INT IDENTITY PRIMARY KEY,
+	FirstName NVARCHAR(100) NOT NULL,
+	LastName NVARCHAR(100) NOT NULL,
+	DateOfBirth DATE
+);
+-- Table 6
+CREATE TABLE Movies (
+    MovieID INT IDENTITY PRIMARY KEY,
+    Title NVARCHAR(255) NOT NULL,
+    ReleaseDate DATE,
+    Duration INT,
+    GenreID INT NOT NULL FOREIGN KEY REFERENCES Genres(GenreID),
+    DirectorID INT NOT NULL FOREIGN KEY REFERENCES Directors(DirectorID),
+    Description NVARCHAR(MAX)
+);
+-- Table 7
+CREATE TABLE Sessions (
+    SessionID INT IDENTITY PRIMARY KEY,
+    MovieID INT NOT NULL FOREIGN KEY REFERENCES Movies(MovieID),
+    HallID INT NOT NULL FOREIGN KEY REFERENCES Halls(HallID),
+    SessionTime DATETIME NOT NULL
+);
+-- Table 8
+CREATE TABLE Tickets (
+    TicketID INT IDENTITY PRIMARY KEY,
+    SessionID INT NOT NULL FOREIGN KEY REFERENCES Sessions(SessionID),
+    SeatID INT NOT NULL FOREIGN KEY REFERENCES Seats(SeatID),
+    Price DECIMAL(5, 2) NOT NULL,
+    PurchaseDate DATETIME NOT NULL,
+    CustomerID INT NOT NULL FOREIGN KEY REFERENCES Customers(CustomerID),
+    EmployeeID INT NOT NULL FOREIGN KEY REFERENCES Employees(EmployeeID)
+);
+-- Table 9
+CREATE TABLE CustomerFeedback (
+    FeedbackID INT IDENTITY PRIMARY KEY,
+    CustomerID INT NOT NULL FOREIGN KEY REFERENCES Customers(CustomerID),
+    FeedbackText NVARCHAR(MAX) NOT NULL,
+    Rating INT CHECK (Rating BETWEEN 1 AND 5),
+    FeedbackDate DATETIME NOT NULL
+);
+-- Table 10
+CREATE TABLE Promotions (
+    PromotionID INT IDENTITY PRIMARY KEY,
+    PromotionName NVARCHAR(100) NOT NULL,
+    DiscountPercent DECIMAL(5, 2) NOT NULL,
+    -- StartDate DATE NOT NULL,
+    -- EndDate DATE NOT NULL
+);
+-- Table 11
+CREATE TABLE ProductCategories (
+    CategoryID INT IDENTITY PRIMARY KEY,
+    CategoryName NVARCHAR(100) NOT NULL
+)
+-- Table 12
+CREATE TABLE StoreProducts (
+    ProductID INT IDENTITY PRIMARY KEY,
+    ProductName NVARCHAR(100) NOT NULL,
+    CategoryID INT NOT NULL FOREIGN KEY REFERENCES ProductCategories(CategoryID),
+    Price DECIMAL(5, 2) NOT NULL,
+    QuantityAvailable INT NOT NULL
+);
+-- Table 13
+CREATE TABLE EmployeeRoles (
+    RoleID INT IDENTITY PRIMARY KEY,
+    RoleName NVARCHAR(100) NOT NULL,
+    Responsibilities NVARCHAR(MAX)
+);
+-- Table 14
+CREATE TABLE Employees (
+    EmployeeID INT IDENTITY PRIMARY KEY,
+    FirstName NVARCHAR(100) NOT NULL,
+    LastName NVARCHAR(100) NOT NULL,
+    RoleID INT NOT NULL FOREIGN KEY REFERENCES EmployeeRoles(RoleID),
+    HireDate DATE NOT NULL,
+    Salary DECIMAL(10, 2) NOT NULL
+);
+-- Table 15
+CREATE TABLE CustomerLoyalty (
+    LoyaltyID INT IDENTITY PRIMARY KEY,
+    CustomerID INT NOT NULL FOREIGN KEY REFERENCES Customers(CustomerID),
+    PointsEarned INT NOT NULL,
+    AvailablePromotions INT NULL FOREIGN KEY REFERENCES Promotions(PromotionID),
+    LastUpdated DATETIME NOT NULL
+);

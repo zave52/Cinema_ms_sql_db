@@ -1,0 +1,173 @@
+CREATE OR ALTER PROCEDURE GetEmployeeRoles
+    @RoleID INT = NULL,
+    @RoleName NVARCHAR(100) = NULL,
+    @Responsibilities NVARCHAR(MAX) = NULL,
+    @PageNumber INT = 1,
+    @PageSize INT = 10,
+    @SortColumn NVARCHAR(50) = 'RoleName',
+    @SortDirection BIT = 0
+AS
+BEGIN
+    IF @RoleID IS NOT NULL AND NOT EXISTS(SELECT * FROM EmployeeRoles WHERE RoleID = @RoleID)
+        BEGIN
+            PRINT N'Неправильне значення @RoleID'
+            RETURN
+        END
+
+    IF @PageNumber < 1 SET @PageNumber = 1;
+    IF @PageSize < 1 SET @PageSize = 10;
+
+    DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
+
+    IF @SortColumn NOT IN ('RoleID', 'RoleName', 'Responsibilities')
+        BEGIN
+            SET @SortColumn = 'RoleName';
+        END
+
+    SELECT RoleID, RoleName, Responsibilities
+    FROM EmployeeRoles
+    WHERE (@RoleID IS NULL OR RoleID = @RoleID)
+      AND (@RoleName IS NULL OR RoleName LIKE @RoleName + '%')
+      AND (@Responsibilities IS NULL OR Responsibilities LIKE '%' + @Responsibilities + '%')
+    ORDER BY
+        CASE WHEN @SortDirection = 0 THEN
+                 CASE @SortColumn
+                     WHEN 'RoleID' THEN CAST(RoleID AS NVARCHAR)
+                     WHEN 'RoleName' THEN RoleName
+                     WHEN 'Responsibilities' THEN Responsibilities
+                     END
+            END ASC,
+        CASE WHEN @SortDirection = 1 THEN
+                 CASE @SortColumn
+                     WHEN 'RoleID' THEN CAST(RoleID AS NVARCHAR)
+                     WHEN 'RoleName' THEN RoleName
+                     WHEN 'Responsibilities' THEN Responsibilities
+                     END
+            END DESC
+    OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+
+
+EXEC GetEmployeeRoles
+    @RoleID = 3,
+    @PageNumber = 1,
+    @PageSize = 10,
+    @SortColumn = 'RoleID',
+    @SortDirection = 0;
+
+
+
+
+
+
+
+
+CREATE OR ALTER PROCEDURE GetGenres
+    @GenreID INT = NULL,
+    @GenreName NVARCHAR(100) = NULL,
+    @PageNumber INT = 1,
+    @PageSize INT = 10,
+    @SortColumn NVARCHAR(50) = 'GenreName',
+    @SortDirection BIT = 0
+AS
+BEGIN
+    IF @GenreID IS NOT NULL AND NOT EXISTS(SELECT * FROM Genres WHERE GenreID = @GenreID)
+        BEGIN
+            PRINT N'Неправильне значення @GenreID'
+            RETURN
+        END
+
+    IF @PageNumber < 1 SET @PageNumber = 1;
+    IF @PageSize < 1 SET @PageSize = 10;
+
+    DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
+
+    IF @SortColumn NOT IN ('GenreID', 'GenreName')
+        BEGIN
+            SET @SortColumn = 'GenreName';
+        END
+
+    SELECT GenreID, GenreName
+    FROM Genres
+    WHERE (@GenreID IS NULL OR GenreID = @GenreID)
+      AND (@GenreName IS NULL OR GenreName LIKE @GenreName + '%')
+    ORDER BY
+        CASE WHEN @SortDirection = 0 THEN
+                 CASE @SortColumn
+                     WHEN 'GenreID' THEN CAST(GenreID AS NVARCHAR)
+                     WHEN 'GenreName' THEN GenreName
+                     END
+            END ASC,
+        CASE WHEN @SortDirection = 1 THEN
+                 CASE @SortColumn
+                     WHEN 'GenreID' THEN CAST(GenreID AS NVARCHAR)
+                     WHEN 'GenreName' THEN GenreName
+                     END
+            END DESC
+    OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+
+
+EXEC GetGenres
+    @GenreID = 3,
+    @PageNumber = 1,
+    @PageSize = 10,
+    @SortColumn = 'GenreID',
+    @SortDirection = 0;
+
+
+
+
+CREATE OR ALTER PROCEDURE GetProductCategories
+    @CategoryID INT = NULL,
+    @CategoryName NVARCHAR(100) = NULL,
+    @PageNumber INT = 1,
+    @PageSize INT = 10,
+    @SortColumn NVARCHAR(50) = 'CategoryName',
+    @SortDirection BIT = 0
+AS
+BEGIN
+    IF @CategoryID IS NOT NULL AND NOT EXISTS(SELECT * FROM ProductCategories WHERE CategoryID = @CategoryID)
+        BEGIN
+            PRINT N'Неправильне значення @CategoryID'
+            RETURN
+        END
+    IF @PageNumber < 1 SET @PageNumber = 1;
+    IF @PageSize < 1 SET @PageSize = 10;
+
+    DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
+
+    IF @SortColumn NOT IN ('CategoryID', 'CategoryName')
+        BEGIN
+            SET @SortColumn = 'CategoryName';
+        END
+
+    SELECT CategoryID, CategoryName
+    FROM ProductCategories
+    WHERE (@CategoryID IS NULL OR CategoryID = @CategoryID)
+      AND (@CategoryName IS NULL OR CategoryName LIKE @CategoryName + '%')
+    ORDER BY
+        CASE WHEN @SortDirection = 0 THEN
+                 CASE @SortColumn
+                     WHEN 'CategoryID' THEN CAST(CategoryID AS NVARCHAR)
+                     WHEN 'CategoryName' THEN CategoryName
+                     END
+            END ASC,
+        CASE WHEN @SortDirection = 1 THEN
+                 CASE @SortColumn
+                     WHEN 'CategoryID' THEN CAST(CategoryID AS NVARCHAR)
+                     WHEN 'CategoryName' THEN CategoryName
+                     END
+            END DESC
+    OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+
+
+EXEC GetProductCategories
+    @PageNumber = 1,
+    @PageSize = 10,
+    @SortColumn = 'CategoryID',
+    @SortDirection = 0;

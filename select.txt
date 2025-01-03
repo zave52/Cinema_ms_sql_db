@@ -1,0 +1,95 @@
+-- Запити на отриманян даних з таблиць
+SELECT * FROM Halls;
+
+SELECT * FROM Seats;
+
+SELECT * FROM Customers;
+
+SELECT * FROM Genres;
+
+SELECT * FROM Directors;
+
+SELECT * FROM Movies;
+
+SELECT * FROM Sessions;
+
+SELECT * FROM Tickets;
+
+SELECT * FROM CustomerFeedback;
+
+SELECT * FROM Promotions;
+
+SELECT * FROM ProductCategories;
+
+SELECT * FROM StoreProducts;
+
+SELECT * FROM EmployeeRoles;
+
+SELECT * FROM Employees;
+
+SELECT * FROM CustomerLoyalty;
+
+
+-- Вільні місця на певному сеансі
+SELECT Halls.Name, Seats.RowNumber, Seats.SeatNumber 
+FROM Seats
+INNER JOIN Halls
+ON Seats.HallID = Halls.HallID
+INNER JOIN Sessions
+ON Halls.HallID = Sessions.HallID
+WHERE Sessions.SessionID = 1 
+	AND Seats.SeatID NOT IN (
+		SELECT Tickets.SeatID
+		FROM Tickets
+		WHERE Tickets.SessionID = 1
+	)
+
+-- Фільми з найбільшою кіьлкістю проданих квитків
+SELECT Movies.Title, COUNT(Tickets.TicketID) AS TicketsSold
+FROM Movies
+INNER JOIN Sessions 
+	ON Movies.MovieID = Sessions.MovieID
+INNER JOIN Tickets 
+	ON Sessions.SessionID = Tickets.SessionID
+GROUP BY Movies.Title
+ORDER BY TicketsSold DESC;
+
+-- Пропозиції що ще не закінчились
+SELECT PromotionName, DiscountPercent, StartDate, EndDate
+FROM Promotions
+WHERE EndDate >= GETDATE();
+
+-- Доступні фільми
+SELECT Movies.Title,
+	Genres.GenreName AS Genre,
+   CONCAT(D.FirstName, ' ', D.LastName) AS Director,
+   Sessions.SessionTime AS SessionStart
+FROM Movies M
+INNER JOIN Genres 
+	ON MOvies.GenreID = Genres.GenreID
+INNER JOIN Directors 
+	ON Movies.DirectorID = Director.DirectorID
+INNER JOIN Sessions 
+	ON Movies.MovieID = Sessions.MovieID
+WHERE Sessions.SessionTime > GETDATE()
+ORDER BY Sessions.SessionTime;
+
+-- Дохід за кожен сеанс 
+SELECT Sessions.SessionID, Moveis.Title, SUM(Tickets.Price) AS TotalRevenue
+FROM Sessions
+INNER JOIN Movies 
+	ON Sessions.MovieID = Moveis.MovieID
+INNER JOIN Tickets 
+	ON Sessions.SessionID = Tickets.SessionID
+GROUP BY Sessions.SessionID, Moveis.Title
+ORDER BY TotalRevenue DESC;
+
+-- Відгуки клієнтів
+SELECT CONCAT(Customers.FirstName, ' ', Customers.LastName) AS CustomerName,
+	CustomerFeedback.FeedbackText,
+   CustomerFeedback.Rating,
+   CustomerFeedback.FeedbackDate
+FROM CustomerFeedback
+INNER JOIN Customers 
+	ON CustomerFeedback.CustomerID = Customers.CustomerID
+ORDER BY CustomerFeedback.FeedbackDate DESC;
