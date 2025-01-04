@@ -1,0 +1,45 @@
+-- Movies
+ALTER TABLE dbo.Movies
+ADD
+   InCinemaFrom DATETIME2 GENERATED ALWAYS AS ROW START HIDDEN
+      CONSTRAINT DF_Movies_InCinemaFrom DEFAULT SYSUTCDATETIME(),
+   InCinemaTo DATETIME2 GENERATED ALWAYS AS ROW END HIDDEN
+      CONSTRAINT DF_Movies_InCinemaTo DEFAULT CONVERT(DATETIME2, '9999-12-31 23:59:59.9999999'),
+   PERIOD FOR SYSTEM_TIME (InCinemaFrom, InCinemaTo);
+GO
+
+ALTER TABLE dbo.Movies
+   SET (SYSTEM_VERSIONING = ON (HISTORY_TABLE = dbo.Movies_History));
+GO
+
+-- Promotions
+ALTER TABLE dbo.Promotions
+ADD
+   ValidFrom DATETIME2 GENERATED ALWAYS AS ROW START HIDDEN
+      CONSTRAINT DF_Promotions_ValidFrom DEFAULT SYSUTCDATETIME(),
+   ValidTo DATETIME2 GENERATED ALWAYS AS ROW END HIDDEN
+      CONSTRAINT DF_Promotions_ValidTo DEFAULT CONVERT(DATETIME2, '9999-12-31 23:59:59.9999999'),
+PERIOD FOR SYSTEM_TIME (ValidFrom, ValidTo);
+GO
+
+ALTER TABLE dbo.Promotions
+   SET (SYSTEM_VERSIONING = ON (HISTORY_TABLE = dbo.Promotions_History));
+GO
+
+-- Вибірка усіх записів
+SELECT MovieID, Title, InCinemaFrom, InCinemaTo
+FROM dbo.Movies
+   FOR SYSTEM_TIME ALL;
+GO
+
+-- Вибірка в конкретний момент часу
+SELECT MovieID, Title, InCinemaFrom, InCinemaTo
+FROM dbo.Movies
+   FOR SYSTEM_TIME AS OF '2025-01-01 00:00:00';
+GO
+
+-- Вибірка в конкретний період часу
+SELECT MovieID, Title, InCinemaFrom, InCinemaTo
+FROM dbo.Movies
+	FOR SYSTEM_TIME BETWEEN '2023-01-01 00:00:00' AND '2025-01-01 00:00:00';
+GO

@@ -1,0 +1,259 @@
+CREATE PROCEDURE PurchaseTicket
+    @MovieName NVARCHAR(100),
+    @HallName NVARCHAR(100),
+    @SessionTime DATETIME,
+    @RowNumber INT,
+    @SeatNumber INT,
+    @Phone NVARCHAR(15),
+    @EmployeeID INT,
+    @Price DECIMAL(5, 2)
+AS
+BEGIN
+    BEGIN TRY
+        DECLARE @CurrentDate DATETIME = GETDATE();
+        DECLARE @SessionID INT;
+        DECLARE @SeatID INT;
+        DECLARE @CustomerID INT;
+        DECLARE @HallID INT;
+
+        SELECT @HallID = HallID
+        FROM Halls
+        WHERE Name = @HallName;
+
+        IF @HallID IS NULL
+            BEGIN
+                PRINT N'Зал не знайдено';
+                RETURN;
+            END;
+
+        SELECT @SessionID = SessionID
+        FROM Sessions
+        WHERE MovieID = (SELECT MovieID FROM Movies WHERE Title = @MovieName)
+          AND HallID = @HallID
+          AND SessionTime = @SessionTime;
+
+        IF @SessionID IS NULL
+            BEGIN
+                PRINT N'Сесію не знайдено';
+                RETURN;
+            END;
+
+        SELECT @SeatID = SeatID
+        FROM Seats
+        WHERE RowNumber = @RowNumber
+          AND SeatNumber = @SeatNumber
+          AND HallID = @HallID;
+
+        IF @SeatID IS NULL
+            BEGIN
+                PRINT N'Місце не знайдено';
+                RETURN;
+            END;
+
+        SELECT @CustomerID = CustomerID
+        FROM Customers
+        WHERE Phone = @Phone;
+
+        IF @CustomerID IS NULL
+            BEGIN
+                PRINT N'Клієнта не знайдено, спочатку зареєструйтесь';
+                RETURN;
+            END;
+
+        IF EXISTS (SELECT 1 FROM Tickets WHERE SeatID = @SeatID AND SessionID = @SessionID)
+            BEGIN
+                PRINT N'Місце вже зайняте';
+                RETURN;
+            END;
+
+        EXEC sp_SetTicket
+             @SessionID = @SessionID,
+             @SeatID = @SeatID,
+             @Price = @Price,
+             @PurchaseDate = @CurrentDate,
+             @CustomerID = @CustomerID,
+             @EmployeeID = @EmployeeID;
+
+        DECLARE @NewPoints INT = FLOOR(@Price / 10);
+
+        IF EXISTS (SELECT 1 FROM CustomerLoyalty WHERE CustomerID = @CustomerID)
+            BEGIN
+                DECLARE @CurrentPoints INT;
+                DECLARE @LoyaltyID INT;
+                SELECT @CurrentPoints = PointsEarned, @LoyaltyID = LoyaltyID FROM CustomerLoyalty WHERE CustomerID = @CustomerID;
+                SET @CurrentPoints = @CurrentPoints + @NewPoints;
+
+                EXEC sp_SetCustomerLoyalty
+                     @LoyaltyID = @LoyaltyID,
+                     @PointsEarned = @CurrentPoints,
+                     @LastUpdated = @CurrentDate;
+            END
+        ELSE
+            BEGIN
+                EXEC sp_SetCustomerLoyalty
+                     @CustomerID = @CustomerID,
+                     @PointsEarned = @NewPoints,
+                     @LastUpdated = @CurrentDate;
+            END;
+
+        PRINT N'Купівля квитка успішна';
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+
+DECLARE @SessionTime DATETIME = '2024-10-05 14:00:00';
+EXEC PurchaseTicket
+     @MovieName = N'Земля',
+     @HallName = N'Червоний зал',
+     @SessionTime = @SessionTime,
+     @RowNumber = 2,
+     @SeatNumber = 6,
+     @Phone = N'+380501234567',
+     @EmployeeID = 3,
+     @Price = 200.50;
+
+
+
+CREATE PROCEDURE SellStoreProduct
+    @ProductName NVARCHAR(100),
+    @Quantity INT
+AS
+BEGIN
+    BEGIN TRY
+        DECLARE @ProductID INT;
+        DECLARE @AvailableQuantity INT;
+
+        SELECT @ProductID = ProductID, @AvailableQuantity = QuantityAvailable
+        FROM StoreProducts
+        WHERE ProductName = @ProductName;
+
+        IF @ProductID IS NULL
+            BEGIN
+                PRINT N'Товар не знайдено';
+                RETURN;
+            END;
+
+        IF @AvailableQuantity < @Quantity
+            BEGIN
+                PRINT N'Недостатня кількість товару';
+                RETURN;
+            END;
+
+        DECLARE @QuantityAvailable INT = @AvailableQuantity - @Quantity;
+        EXEC sp_SetStoreProduct
+             @ProductID = @ProductID,
+             @QuantityAvailable = @QuantityAvailable;
+
+        PRINT N'Продаж успішно завершено';
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+EXEC SellStoreProduct
+     @ProductName = N'Кола',
+     @Quantity = 3;
+
+
+
+CREATE PROCEDURE ScheduleSession
+    @MovieName NVARCHAR(100),
+    @HallName NVARCHAR(100),
+    @SessionTime DATETIME
+AS
+BEGIN
+    BEGIN TRY
+        DECLARE @MovieID INT;
+        DECLARE @HallID INT;
+
+        SELECT @MovieID = MovieID
+        FROM Movies
+        WHERE Title = @MovieName;
+
+        IF @MovieID IS NULL
+            BEGIN
+                PRINT N'Фільм не знайдено';
+                RETURN;
+            END;
+
+        SELECT @HallID = HallID
+        FROM Halls
+        WHERE Name = @HallName;
+
+        IF @HallID IS NULL
+            BEGIN
+                PRINT N'Зал не знайдено';
+                RETURN;
+            END;
+
+        IF EXISTS (SELECT 1 FROM Sessions WHERE HallID = @HallID AND SessionTime = @SessionTime)
+            BEGIN
+                PRINT N'Зал зайнятий на цей час';
+                RETURN;
+            END;
+
+        EXEC sp_SetSession
+             @MovieID = @MovieID,
+             @HallID = @HallID,
+             @SessionTime = @SessionTime;
+
+        PRINT N'Сеанс успішно заплановано';
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+DECLARE @SessionTime DATETIME = '2025-01-05 18:00:00';
+EXEC ScheduleSession
+     @MovieName = N'Тіні забутих предків',
+     @HallName = N'Зелений зал',
+     @SessionTime = @SessionTime;
+
+
+
+
+CREATE PROCEDURE AddCustomerFeedback
+    @Phone NVARCHAR(15),
+    @FeedbackText NVARCHAR(MAX),
+    @Rating INT
+AS
+BEGIN
+    BEGIN TRY
+        DECLARE @FeedbackDate DATETIME = GETDATE();
+        DECLARE @CustomerID INT;
+        SELECT @CustomerID = CustomerID
+        FROM Customers
+        WHERE Phone = @Phone;
+
+        IF @CustomerID IS NULL
+            BEGIN
+                PRINT N'Клієнта з таким номером телефону не знайдено';
+                RETURN;
+            END;
+
+        EXEC sp_SetCustomerFeedback
+             @CustomerID = @CustomerID,
+             @FeedbackText = @FeedbackText,
+             @Rating = @Rating,
+             @FeedbackDate = @FeedbackDate;
+
+        PRINT N'Відгук успішно додано';
+    END TRY
+    BEGIN CATCH
+        PRINT N'Помилка: ' + ERROR_MESSAGE();
+    END CATCH;
+END;
+GO
+
+EXEC AddCustomerFeedback
+     @Phone = N'+380671234567',
+     @FeedbackText = N'Поганий сервіс та якість кінотеатру!',
+     @Rating = 1
