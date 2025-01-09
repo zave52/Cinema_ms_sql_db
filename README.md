@@ -79,13 +79,20 @@
 
 ## Структура Репозиторію
 
-├── tables.txt
+├── tables.txt 
+
 ├── history_table.txt
+
 ├── select.txt
+
 ├── set_procedures.txt
+
 ├── insert.txt
+
 ├── stored_procedures.txt
+
 ├── views.txt
+
 └── get_procedures.txt
 
 ## Використання
